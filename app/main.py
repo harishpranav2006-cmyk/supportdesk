@@ -85,11 +85,22 @@ class Registration(BaseModel):
     password:str=Field(min_length=12,max_length=256)
 class NewEmployee(BaseModel):
     name:str=Field(min_length=2,max_length=100)
-    email:str=Field(min_length=5,max_length=254,pattern=r'^[^@ ]+@[^@ ]+[.][^@ ]+
-    title:str=Field(min_length=3,max_length=160,pattern=r'\S')
-    description:str=Field(min_length=5,max_length=10000,pattern=r'\S')
-    priority:Literal['low','medium','high']='medium'
-    category:Literal['general','technical','billing','account']='general'
+    email:str=Field(min_length=5,max_length=254)
+    password:str=Field(min_length=12,max_length=256)
+    role:Literal['agent','admin']
+    designation:str=Field(min_length=2,max_length=100)
+    department:str|None=Field(None,max_length=100)
+
+class UpdateEmployee(BaseModel):
+    name:str|None=Field(None,min_length=2,max_length=100)
+    role:Literal['agent','admin']|None=None
+    designation:str|None=Field(None,min_length=2,max_length=100)
+    department:str|None=Field(None,max_length=100)
+    is_active:bool|None=None
+
+class TransferEmployeeManager(BaseModel):
+    user_id:int=Field(gt=0)
+
 class UpdateTicket(BaseModel):
     status:Literal['open','in_progress','resolved']
     version:int|None=Field(None,ge=1)
