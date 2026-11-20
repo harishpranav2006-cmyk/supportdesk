@@ -76,6 +76,14 @@ node --check app/static/app.js
 
 The API tests cover authentication, role permissions, customer isolation, assignment, status transitions, activity history, logout, validation, pagination, login throttling, exports, concurrency, and password changes. The automated suite currently uses SQLite; PostgreSQL integration and live hosted-browser testing remain separate release checks.
 
+## Employee administration
+
+The designated Employee Manager account is `admin@supportdesk.local` on the existing installation. It is a separate permission from the normal Admin application role.
+
+The Employee Manager can create Agent and Admin accounts, set a job designation and department, edit staff profiles, deactivate staff accounts (which revokes their sessions), and transfer the single Employee Manager permission to another active Admin. Other Admins can manage tickets and assignments, but cannot access employee administration. Public self-registration remains customer-only.
+
+New staff passwords are set by the Employee Manager at account creation and must be shared with the employee through a secure channel. There is currently no email invitation or first-login forced-password-change flow.
+
 ## Production limitations
 
 This is a substantial portfolio application, but it is **not yet a fully production-ready SaaS**. Email delivery and password-reset links, public customer registration, invitation management, file attachments, organization tenancy, distributed rate limiting, automated backup/restore drills, accessibility auditing, load testing, and production monitoring still need implementation and verification.
