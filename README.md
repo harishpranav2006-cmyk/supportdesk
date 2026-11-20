@@ -4,6 +4,8 @@ A role-based customer-support workspace built with FastAPI, SQLAlchemy, and vani
 
 ## Current features
 
+- Public customer self-registration with automatic sign-in and server-side password hashing.
+- Registration is restricted to the customer role, validates inputs, rejects duplicate emails, and rate-limits sign-up attempts by client address.
 - Customer ticket isolation enforced by the API.
 - Agent and administrator roles with server-side permission checks.
 - Ticket assignment, comments, status transitions, and activity history.
