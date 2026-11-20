@@ -10,6 +10,7 @@ tickets = Table('tickets',metadata,Column('id',Integer,primary_key=True),Column(
 comments = Table('comments',metadata,Column('id',Integer,primary_key=True),Column('ticket_id',Integer,ForeignKey('tickets.id'),nullable=False),Column('author_id',Integer,ForeignKey('users.id'),nullable=False),Column('body',Text,nullable=False),Column('created_at',Integer,nullable=False))
 audit_events = Table('audit',metadata,Column('id',Integer,primary_key=True),Column('ticket_id',Integer,ForeignKey('tickets.id'),nullable=False),Column('actor_id',Integer,ForeignKey('users.id'),nullable=False),Column('action',Text,nullable=False),Column('created_at',Integer,nullable=False))
 login_attempts = Table('login_attempts',metadata,Column('email',String(254),primary_key=True),Column('failures',Integer,nullable=False),Column('reset_at',Integer,nullable=False))
+signup_attempts = Table('signup_attempts',metadata,Column('ip',String(64),primary_key=True),Column('attempts',Integer,nullable=False),Column('reset_at',Integer,nullable=False))
 versions = Table('schema_versions',metadata,Column('version',Integer,primary_key=True))
 Index('ticket_customer_updated',tickets.c.customer_id,tickets.c.updated_at)
 Index('ticket_status_updated',tickets.c.status,tickets.c.updated_at)
