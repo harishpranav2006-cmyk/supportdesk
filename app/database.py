@@ -28,6 +28,15 @@ employee_managers = Table(
     Column('granted_at',Integer,nullable=False),
     CheckConstraint('singleton_id = 1'),
 )
+employee_events = Table(
+    'employee_events',metadata,
+    Column('id',Integer,primary_key=True),
+    Column('actor_id',Integer,ForeignKey('users.id'),nullable=False),
+    Column('employee_id',Integer,ForeignKey('users.id'),nullable=False),
+    Column('action',String(200),nullable=False),
+    Column('created_at',Integer,nullable=False),
+)
+Index('employee_event_created',employee_events.c.employee_id,employee_events.c.created_at)
 
 versions = Table('schema_versions',metadata,Column('version',Integer,primary_key=True))
 Index('ticket_customer_updated',tickets.c.customer_id,tickets.c.updated_at)
