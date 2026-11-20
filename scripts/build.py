@@ -7,6 +7,14 @@ from shutil import copytree
 
 root = Path(__file__).resolve().parents[1]
 
+# Apply idempotent database migrations on every deployment when PostgreSQL is configured.
+if os.environ.get("DATABASE_URL"):
+    subprocess.run(
+        [sys.executable, "-m", "app.migrate"],
+        cwd=root,
+        check=True,
+    )
+
 if os.environ.get("SUPPORTDESK_BOOTSTRAP_ON_BUILD") == "true":
     # Install the pinned dependencies into the build environment before importing app.seed.
     subprocess.run(
