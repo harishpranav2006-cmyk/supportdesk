@@ -4,7 +4,7 @@
 
 SupportDesk uses a same-origin FastAPI API with SQLAlchemy queries and a vanilla JavaScript browser interface. Session tokens are random and only SHA-256 hashes are persisted. Passwords use scrypt with per-password salts. Authorization is enforced in API handlers, not merely by hiding UI controls.
 
-Customers can access only their own tickets. Agents can read the team inbox but can modify only tickets assigned to them. Administrators assign and unassign agents. Ticket mutations use version checks and create audit events in the same database transaction.
+Customers can access only their own tickets. Agents can read the team inbox but can modify only tickets assigned to them. Administrators assign and unassign agents. A single Employee Manager permission (separate from the Admin role) controls staff provisioning; it can create Agent/Admin accounts, assign designations and departments, deactivate employees, and transfer the manager permission. Ticket mutations use version checks and create audit events in the same database transaction.
 
 ## Database
 
@@ -21,7 +21,7 @@ SQLite is the local development default. PostgreSQL is supported through \`DATAB
 
 ## Known limitations
 
-Email delivery and password recovery are not implemented. Public registration creates customer-role accounts only and currently does not verify email ownership. Organization tenancy, file attachment handling, and internal-only comments are not implemented. Audit history is application-generated and is not tamper-proof against database administrators. PostgreSQL integration tests, accessibility audits, load tests, backup/restore drills, and production monitoring remain required before a real customer launch.
+Email delivery and password recovery are not implemented. Public registration creates customer-role accounts only and currently does not verify email ownership. Email invitations and forced first-login password changes are not implemented. Organization tenancy, file attachment handling, and internal-only comments are not implemented. Audit history is application-generated and is not tamper-proof against database administrators. PostgreSQL integration tests, accessibility audits, load tests, backup/restore drills, and production monitoring remain required before a real customer launch.
 
 ## Interview preparation
 
