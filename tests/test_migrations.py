@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from sqlalchemy import create_engine, insert, select
-from app.database import metadata, users, versions, signup_attempts
+from app.database import metadata, users, versions, signup_attempts, employee_profiles, employee_managers
 from app.migrate import migrate
 
 
@@ -95,6 +95,58 @@ class SupportDeskMigrationTests(unittest.TestCase):
                 connection.execute(
                     select(versions.c.version).where(versions.c.version == 4)
                 ).all().__len__(),
+                1,
+            )
+
+
+    def test_employee_migration_backfills_profiles_and_assigns_one_manager(self):
+        with self.engine.begin() as connection:
+            connection.execute(insert(users),[
+                {
+                    "email":"admin@supportdesk.local",
+                    "name":"Administrator",
+                    "password":"admin-hash",
+                    "role":"admin",
+                },
+                {
+                    "email":"agent@supportdesk.local",
+                    "name":"Support Agent",
+                    "password":"agent-hash",
+                    "role":"agent",
+                },
+            ])
+        migrate(self.engine)
+        with self.engine.connect() as connection:
+            manager_id=connection.execute(
+                select(employee_managers.c.user_id).where(employee_managers.c.singleton_id==1)
+            ).scalar_one()
+            admin_id=connection.execute(
+                select(users.c.id).where(users.c.email=="admin@supportdesk.local")
+            ).scalar_one()
+            profiles=connection.execute(
+                select(employee_profiles.c.designation).where(
+                    employee_profiles.c.user_id==admin_id
+                )
+            ).scalar_one()
+            agent_id=connection.execute(
+                select(users.c.id).where(users.c.email=="agent@supportdesk.local")
+            ).scalar_one()
+            agent_designation=connection.execute(
+                select(employee_profiles.c.designation).where(
+                    employee_profiles.c.user_id==agent_id
+                )
+            ).scalar_one()
+            self.assertEqual(manager_id,admin_id)
+            self.assertEqual(profiles,"Administrator")
+            self.assertEqual(agent_designation,"Support Agent")
+            self.assertEqual(
+                connection.execute(select(versions.c.version).where(versions.c.version==5)).all().__len__(),
+                1,
+            )
+        migrate(self.engine)
+        with self.engine.connect() as connection:
+            self.assertEqual(
+                connection.execute(select(employee_managers.c.user_id)).all().__len__(),
                 1,
             )
 
