@@ -102,4 +102,53 @@ class SupportDeskTests(unittest.TestCase):
         self.assertEqual(self.client.post('/api/logout',json={},headers={'sec-fetch-site':'cross-site'}).status_code,403)
         self.assertEqual(self.client.post('/api/logout',data='test').status_code,415)
 
+
+    def test_public_registration_creates_customer_session_and_hashes_password(self):
+        response=self.client.post('/api/register',json={
+            'name':'New Customer',
+            'email':'New.Customer@SupportDesk.Local',
+            'password':'customer-signup-pass-123',
+            'role':'admin',
+        })
+        self.assertEqual(response.status_code,201)
+        account=response.json()
+        self.assertEqual(account['email'],'new.customer@supportdesk.local')
+        self.assertEqual(account['role'],'customer')
+        self.assertEqual(self.client.get('/api/me').status_code,200)
+        self.assertEqual(self.client.get('/api/me').json()['role'],'customer')
+        with m.db() as c:
+            stored=c.execute(m.select(m.users.c.password).where(
+                m.users.c.email=='new.customer@supportdesk.local'
+            )).scalar_one()
+        self.assertNotEqual(stored,'customer-signup-pass-123')
+        self.assertTrue(m.check_password('customer-signup-pass-123',stored))
+
+    def test_public_registration_rejects_duplicate_email_case_insensitively(self):
+        payload={'name':'New Customer','email':'new@supportdesk.local','password':'customer-signup-pass-123'}
+        self.assertEqual(self.client.post('/api/register',json=payload).status_code,201)
+        payload['email']='NEW@SUPPORTDESK.LOCAL'
+        self.assertEqual(self.client.post('/api/register',json=payload).status_code,409)
+
+    def test_public_registration_validates_inputs(self):
+        base={'name':'New Customer','email':'new@supportdesk.local','password':'short'}
+        self.assertEqual(self.client.post('/api/register',json=base).status_code,422)
+        base['password']='customer-signup-pass-123'
+        base['email']='not-an-email'
+        self.assertEqual(self.client.post('/api/register',json=base).status_code,422)
+
+    def test_public_registration_is_rate_limited_per_client(self):
+        for i in range(5):
+            response=self.client.post('/api/register',json={
+                'name':'New Customer',
+                'email':f'customer{i}@supportdesk.local',
+                'password':'customer-signup-pass-123',
+            })
+            self.assertEqual(response.status_code,201)
+        blocked=self.client.post('/api/register',json={
+            'name':'Another Customer',
+            'email':'blocked@supportdesk.local',
+            'password':'customer-signup-pass-123',
+        })
+        self.assertEqual(blocked.status_code,429)
+
 if __name__=='__main__':unittest.main()
