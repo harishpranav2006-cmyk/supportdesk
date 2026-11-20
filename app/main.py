@@ -271,6 +271,8 @@ def create_employee(data:NewEmployee,user=Depends(current_user)):
     department=data.department.strip() if data.department else None
     if len(name)<2 or len(designation)<2:
         raise HTTPException(422,'Name and designation must contain at least two characters.')
+    if email.count('@')!=1 or '.' not in email.rsplit('@',1)[1] or any(ch.isspace() for ch in email):
+        raise HTTPException(422,'Enter a valid employee email address.')
     now=int(time.time())
     try:
         with db() as c:
