@@ -2,7 +2,8 @@
 import re
 
 from sqlalchemy import inspect, select, insert, update, text
-from .database import metadata, versions, users, tickets, comments, signup_attempts
+from .database import (metadata, versions, users, tickets, comments, signup_attempts,
+                       employee_profiles, employee_managers, employee_events)
 
 
 def _user_id(connection, email):
@@ -112,9 +113,53 @@ def migrate(engine):
             signup_attempts.create(connection, checkfirst=True)
             connection.execute(insert(versions).values(version=4))
 
+        # v5: employee profiles, one designated Employee Manager, and staff audit history.
+        if 5 not in applied:
+            employee_profiles.create(connection, checkfirst=True)
+            employee_managers.create(connection, checkfirst=True)
+            employee_events.create(connection, checkfirst=True)
+
+            staff = connection.execute(
+                select(users.c.id, users.c.role).where(users.c.role.in_(('agent','admin')))
+            ).mappings().all()
+            for person in staff:
+                existing_profile = connection.execute(
+                    select(employee_profiles.c.user_id).where(
+                        employee_profiles.c.user_id == person["id"]
+                    )
+                ).scalar_one_or_none()
+                if existing_profile is None:
+                    designation = "Administrator" if person["role"] == "admin" else "Support Agent"
+                    connection.execute(insert(employee_profiles).values(
+                        user_id=person["id"],
+                        designation=designation,
+                        department="Support",
+                        is_active=1,
+                        created_by=None,
+                        created_at=0,
+                    ))
+
+            current_manager = connection.execute(
+                select(employee_managers.c.user_id).where(employee_managers.c.singleton_id == 1)
+            ).scalar_one_or_none()
+            if current_manager is None:
+                primary_admin = connection.execute(
+                    select(users.c.id)
+                    .where(users.c.email == "admin@supportdesk.local", users.c.role == "admin")
+                ).scalar_one_or_none()
+                if primary_admin is not None:
+                    connection.execute(insert(employee_managers).values(
+                        singleton_id=1,
+                        user_id=primary_admin,
+                        granted_by=primary_admin,
+                        granted_at=0,
+                    ))
+
+            connection.execute(insert(versions).values(version=5))
+
 
 if __name__ == "__main__":
     from .main import engine
 
     migrate(engine())
-    print("SupportDesk schema v4 ready; existing user and ticket data preserved.")
+    print("SupportDesk schema v5 ready; existing user, ticket, and employee data preserved.")
