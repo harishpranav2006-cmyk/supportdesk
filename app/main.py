@@ -124,6 +124,75 @@ def login(data:Credentials,response:Response):
     response.set_cookie('session',token,httponly=True,samesite='strict',secure=SECURE_COOKIE,max_age=28800)
     return {k:u[k] for k in ('id','name','email','role')}
 
+@app.post('/api/register',status_code=201)
+def register(data:Registration,request:Request,response:Response):
+    """Create a customer account. Public registration never grants staff roles."""
+    email=data.email.strip().lower()
+    name=data.name.strip()
+    if len(name)<2:
+        raise HTTPException(422,'Enter a name with at least two characters.')
+
+    client_ip=(request.client.host if request.client else None) or 'unknown'
+    now=int(time.time())
+    token=secrets.token_urlsafe(32)
+    duplicate=False
+
+    try:
+        with db() as c:
+            attempt=c.execute(
+                select(signup_attempts).where(signup_attempts.c.ip==client_ip)
+            ).mappings().first()
+            if attempt and attempt['reset_at']>now and attempt['attempts']>=5:
+                raise HTTPException(429,'Too many sign-up attempts. Try again in one hour.')
+
+            count=attempt['attempts']+1 if attempt and attempt['reset_at']>now else 1
+            reset=attempt['reset_at'] if attempt and attempt['reset_at']>now else now+3600
+            if attempt:
+                c.execute(
+                    update(signup_attempts).where(signup_attempts.c.ip==client_ip)
+                    .values(attempts=count,reset_at=reset)
+                )
+            else:
+                c.execute(
+                    insert(signup_attempts).values(ip=client_ip,attempts=count,reset_at=reset)
+                )
+            c.execute(delete(signup_attempts).where(signup_attempts.c.reset_at<=now))
+
+            existing=c.execute(
+                select(users.c.id).where(users.c.email==email)
+            ).scalar_one_or_none()
+            if existing is not None:
+                duplicate=True
+            else:
+                user_id=c.execute(
+                    insert(users).values(
+                        email=email,
+                        name=name,
+                        password=hash_password(data.password),
+                        role='customer',
+                    ).returning(users.c.id)
+                ).scalar_one()
+                c.execute(insert(sessions).values(
+                    token=hashlib.sha256(token.encode()).hexdigest(),
+                    user_id=user_id,
+                    expires=now+28800,
+                ))
+    except HTTPException:
+        raise
+    except Exception as exc:
+        from sqlalchemy.exc import IntegrityError
+        if isinstance(exc,IntegrityError):
+            raise HTTPException(409,'An account with this email already exists. Sign in instead.')
+        raise
+
+    if duplicate:
+        raise HTTPException(409,'An account with this email already exists. Sign in instead.')
+
+    response.set_cookie(
+        'session',token,httponly=True,samesite='strict',secure=SECURE_COOKIE,max_age=28800
+    )
+    return {'id':user_id,'name':name,'email':email,'role':'customer'}
+
 @app.post('/api/logout')
 def logout(response:Response,session:str|None=Cookie(default=None)):
     with db() as c:
