@@ -117,4 +117,4 @@ if __name__ == "__main__":
     from .main import engine
 
     migrate(engine())
-    print("SupportDesk schema v3 ready; existing user and ticket data preserved.")
+    print("SupportDesk schema v4 ready; existing user and ticket data preserved.")
