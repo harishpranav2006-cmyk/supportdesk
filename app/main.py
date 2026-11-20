@@ -140,6 +140,13 @@ def login(data:Credentials,response:Response):
         valid=check_password(data.password,u['password'] if u else DUMMY_HASH)
         if not u or not valid:
             invalid=True
+        elif u['role'] in ('agent','admin'):
+            profile=c.execute(
+                select(employee_profiles.c.is_active).where(employee_profiles.c.user_id==u['id'])
+            ).scalar_one_or_none()
+            if profile is None or not profile:
+                invalid=True
+        if invalid:
             count=attempt['failures']+1 if attempt and attempt['reset_at']>now else 1
             reset=attempt['reset_at'] if attempt and attempt['reset_at']>now else now+900
             if attempt: c.execute(update(login_attempts).where(login_attempts.c.email==email).values(failures=count,reset_at=reset))
@@ -149,11 +156,6 @@ def login(data:Credentials,response:Response):
             c.execute(delete(sessions).where(sessions.c.expires<=now))
             token=secrets.token_urlsafe(32)
             c.execute(insert(sessions).values(token=hashlib.sha256(token.encode()).hexdigest(),user_id=u['id'],expires=now+28800))
-    if not invalid and u['role'] in ('agent','admin'):
-        with db() as c:
-            profile=c.execute(select(employee_profiles.c.is_active).where(employee_profiles.c.user_id==u['id'])).scalar_one_or_none()
-            if profile is None or not profile:
-                invalid=True
     if invalid: raise HTTPException(401,'Invalid email or password or inactive account')
     response.set_cookie('session',token,httponly=True,samesite='strict',secure=SECURE_COOKIE,max_age=28800)
     with db() as c:
