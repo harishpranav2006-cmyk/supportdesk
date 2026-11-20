@@ -3,7 +3,7 @@ import os
 from sqlalchemy import select, insert, update
 
 from .main import db, hash_password, init_db
-from .database import users
+from .database import users, employee_profiles, employee_managers
 
 ACCOUNTS = [
     ("customer@supportdesk.local", "Harish", "customer", "SUPPORTDESK_CUSTOMER_PASSWORD"),
@@ -43,6 +43,43 @@ def main():
                 connection.execute(
                     update(users).where(users.c.id == existing).values(password=password_hash)
                 )
+
+            if role in ("agent", "admin"):
+                employee_profile = connection.execute(
+                    select(employee_profiles.c.user_id).where(employee_profiles.c.user_id == existing)
+                ).scalar_one_or_none() if existing is not None else connection.execute(
+                    select(users.c.id).where(users.c.email == email)
+                ).scalar_one_or_none()
+                if employee_profile is None:
+                    employee_id = connection.execute(
+                        select(users.c.id).where(users.c.email == email)
+                    ).scalar_one()
+                    connection.execute(insert(employee_profiles).values(
+                        user_id=employee_id,
+                        designation="Administrator" if role == "admin" else "Support Agent",
+                        department="Support",
+                        is_active=1,
+                        created_by=None,
+                        created_at=0,
+                    ))
+
+        manager_id = connection.execute(
+            select(employee_managers.c.user_id).where(employee_managers.c.singleton_id == 1)
+        ).scalar_one_or_none()
+        if manager_id is None:
+            primary_admin = connection.execute(
+                select(users.c.id).where(
+                    users.c.email == "admin@supportdesk.local",
+                    users.c.role == "admin",
+                )
+            ).scalar_one_or_none()
+            if primary_admin is not None:
+                connection.execute(insert(employee_managers).values(
+                    singleton_id=1,
+                    user_id=primary_admin,
+                    granted_by=primary_admin,
+                    granted_at=0,
+                ))
 
     print("SupportDesk accounts ready. Existing passwords were retained unless an explicit reset was requested.")
 
