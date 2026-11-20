@@ -2,7 +2,7 @@
 import re
 
 from sqlalchemy import inspect, select, insert, update, text
-from .database import metadata, versions, users, tickets, comments
+from .database import metadata, versions, users, tickets, comments, signup_attempts
 
 
 def _user_id(connection, email):
@@ -106,6 +106,11 @@ def migrate(engine):
                 _rename_email(connection, old_email, new_email)
 
             connection.execute(insert(versions).values(version=3))
+
+        # v4: create the database-backed public sign-up rate limiter.
+        if 4 not in applied:
+            signup_attempts.create(connection, checkfirst=True)
+            connection.execute(insert(versions).values(version=4))
 
 
 if __name__ == "__main__":
