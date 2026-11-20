@@ -1,40 +1,69 @@
-# AssistFlow
+# SupportDesk
 
-A support workspace built with FastAPI, SQLAlchemy and vanilla JavaScript. Customers submit and track requests; administrators assign agents; assigned agents manage progress and replies.
+A role-based customer-support workspace built with FastAPI, SQLAlchemy, and vanilla JavaScript. Customers create and track requests, administrators assign agents, and assigned agents manage replies and ticket status.
 
-## Features
+## Current features
 
-- Customer isolation, agent assignment permissions and administrator controls enforced by the API.
-- Dashboard metrics, searchable/filterable ticket list, board view, activity history and dark mode.
-- Priority-based resolution targets, overdue filters and optimistic concurrency checks.
-- Excel export for agents and administrators, respecting current filters (up to 5,000 tickets). User text is stored as literal spreadsheet text to prevent formula execution.
+- Customer ticket isolation enforced by the API.
+- Agent and administrator roles with server-side permission checks.
+- Ticket assignment, comments, status transitions, and activity history.
+- Search, status and priority filters, pagination, and board view.
+- Priority-based resolution targets, overdue filters, and optimistic concurrency checks.
+- Staff-only Excel export that respects the current filters and protects cells from formula execution.
 - Scrypt password hashes, expiring HttpOnly sessions, password changes that revoke sessions, and basic login throttling.
-- SQLite for local development; PostgreSQL support for persistent hosting.
+- SQLite for local development and PostgreSQL support for hosted deployments.
 
-## Run locally
+## Run locally on Windows
 
-Python 3.12 or newer:
+Install Python 3.12 or newer. From the project folder in PowerShell:
 
-```sh
-python -m venv .venv
-# Activate .venv using your operating system's activation script.
-python -m pip install -r requirements.txt
-# Set ASSISTFLOW_INITIAL_PASSWORD privately to a strong password (12+ characters).
-python -m app.seed
-python -m uvicorn app.main:app --reload
+```powershell
+py -3.12 -m venv .venv
+.\.venv\Scripts\python.exe -m pip install -r requirements.txt
+$env:SUPPORTDESK_INITIAL_PASSWORD = Read-Host 'Set an initial password (12+ characters)'
+.\.venv\Scripts\python.exe -m app.seed
+.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-Open http://127.0.0.1:8000. Login identifiers are `customer@assistflow.local`, `customer2@assistflow.local`, `agent@assistflow.local`, and `admin@assistflow.local`. These are identifiers, not working email inboxes. Local setup uses the supplied initial password; change each account's password in Account settings. No passwords are included in this repository.
+Open http://127.0.0.1:8000.
 
-Existing SupportDesk installations: back up `supportdesk.db`, install requirements and run `python -m app.migrate`. This preserves accounts, passwords, IDs, tickets and history, migrates the four original login identifiers, and adds the new schema fields. Historical tickets receive no retroactive deadline.
+## Run locally on macOS or Linux
 
-## Database and deployment
+```sh
+python3 -m venv .venv
+. .venv/bin/activate
+python -m pip install -r requirements.txt
+export SUPPORTDESK_INITIAL_PASSWORD='use-a-private-password-of-12-characters-or-more'
+python -m app.seed
+python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```
 
-Local data is in `supportdesk.db` (override with `ASSISTFLOW_DB`). Inspect it with a SQLite browser. Hosting requires a managed PostgreSQL database: configure `DATABASE_URL` with the provider's connection string and `COOKIE_SECURE=true` in Vercel. Never commit either secrets or database files. Vercel filesystem storage is not used for persistent data.
+## Local login identifiers
 
-Before the first deployment, run `python -m app.migrate` against the configured database and provision accounts using `python -m app.seed` with a private initial password; immediately change passwords individually. The local seeding command does not replace existing passwords. Use your PostgreSQL provider's authenticated SQL console to inspect tables (`users`, `tickets`, `comments`, `audit`, `sessions`). Do not share connection strings or password hashes.
+| Role | Login identifier |
+| --- | --- |
+| Customer | `customer@supportdesk.local` |
+| Second customer | `customer2@supportdesk.local` |
+| Agent | `agent@supportdesk.local` |
+| Administrator | `admin@supportdesk.local` |
 
-The Vercel project uses `app/main.py` as its FastAPI entrypoint. Static assets are copied to `public/static` by `scripts/build.py`. PostgreSQL must be configured and migrated before the app is usable. Deployment completion and production credentials are not implied by this source repository.
+These are **local login identifiers**, not working email inboxes. The seed command uses the initial password you provide for any accounts it creates. It does not reset passwords for accounts that already exist. Sign in and change each account password from Account settings.
+
+No default password is stored in the source code. Do not reuse a personal password for local testing or expose seeded accounts to the public internet.
+
+## Database and hosting
+
+Local data is stored in `supportdesk.db`. Set `SUPPORTDESK_DB` to use a different SQLite file.
+
+For Vercel hosting, configure a managed PostgreSQL database and set:
+
+- `DATABASE_URL`: the PostgreSQL connection string.
+- `COOKIE_SECURE=true`: required when the site is served over HTTPS.
+- `SUPPORTDESK_INITIAL_PASSWORD`: only when provisioning new accounts with the seed command.
+
+Run `python -m app.migrate` against the configured database before the first deployment. Back up the database first. The migration preserves user IDs, password hashes, ticket IDs, comments, and audit history while updating the old login identifiers. If both an old and new address already belong to different accounts, migration stops safely and reports the conflict instead of merging or deleting either account.
+
+Vercel's local filesystem is not used for persistent data. A hosted deployment is not considered usable until its PostgreSQL database is configured, migrated, and verified.
 
 ## Verification
 
@@ -43,8 +72,12 @@ python -m unittest discover -s tests -v
 node --check app/static/app.js
 ```
 
-11 API tests cover authentication, role permissions, isolation, assignment and status transitions, activity, logout, validation, pagination, throttling, exports, concurrency and password changes. Tests currently run on SQLite; PostgreSQL integration and live deployment verification are still required.
+The API tests cover authentication, role permissions, customer isolation, assignment, status transitions, activity history, logout, validation, pagination, login throttling, exports, concurrency, and password changes. The automated suite currently uses SQLite; PostgreSQL integration and live hosted-browser testing remain separate release checks.
 
-## Scope
+## Production limitations
 
-This is an interview portfolio application, not a claim of production certification. Email delivery/reset, attachments, organization tenancy, automated backup/restore drills, distributed rate limiting, accessibility auditing and load testing remain future work. Capacity depends on the database plan and measured workload, not merely database choice.
+This is a substantial portfolio application, but it is **not yet a fully production-ready SaaS**. Email delivery and password-reset links, public customer registration, invitation management, file attachments, organization tenancy, distributed rate limiting, automated backup/restore drills, accessibility auditing, load testing, and production monitoring still need implementation and verification.
+
+Real outbound email requires a domain you control and an email delivery provider. Changing a login identifier to `@supportdesk.local` does not create an inbox or send email.
+
+Capacity depends on the managed database plan and measured workload, not simply on choosing PostgreSQL. Do not claim production readiness, real customers, or performance figures without operating and measuring the hosted system.

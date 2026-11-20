@@ -1,9 +1,28 @@
-# Engineering notes
+# SupportDesk engineering notes
 
-AssistFlow uses a same-origin FastAPI API with server-side SQLAlchemy queries and a browser UI. Session tokens are random and only SHA-256 hashes are persisted. Passwords use scrypt with per-password salts. JSON-only writes and same-site cookies reduce CSRF risk; authorization is checked per endpoint.
+## Architecture
 
-Customers see only their own tickets. Staff can read workspace tickets, but agents can modify only assigned tickets. Administrators assign agents. Mutations compare a ticket version inside the transaction and record activity. Export has its own staff-only authorization check; it applies list filters and forces user strings to Excel text cells.
+SupportDesk uses a same-origin FastAPI API with SQLAlchemy queries and a vanilla JavaScript browser interface. Session tokens are random and only SHA-256 hashes are persisted. Passwords use scrypt with per-password salts. Authorization is enforced in API handlers, not merely by hiding UI controls.
 
-SQLite is the local development default. PostgreSQL is the deployment target and requires a managed external database. Schema changes are explicit and idempotent via app.migrate. Back up the local file before migration. Production migrations should run once before deployment with appropriate backups. A larger plan does not replace load testing.
+Customers can access only their own tickets. Agents can read the team inbox but can modify only tickets assigned to them. Administrators assign and unassign agents. Ticket mutations use version checks and create audit events in the same database transaction.
 
-Known limits: per-email login throttling is basic and can race under distributed load; there is no email/password reset service, multi-organization tenancy, attachment handling or operational backup automation. Test coverage uses SQLite, so PostgreSQL and hosted UI verification are separate release checks.
+## Database
+
+SQLite is the local development default. PostgreSQL is supported through \`DATABASE_URL\` for hosting. Schema and account-identifier changes are versioned and idempotent in \`app/migrate.py\`. Back up the database before running migrations against existing data.
+
+## Security boundaries
+
+- Passwords are stored as salted scrypt hashes, never plaintext.
+- Session cookies are HttpOnly and SameSite Strict, with Secure enabled for HTTPS hosting.
+- Customer isolation and agent assignment permissions are checked by the API.
+- API writes require JSON and reject browser cross-site fetch metadata.
+- Browser-rendered user content is inserted as text, not HTML.
+- Login throttling is basic and is not a substitute for distributed abuse protection.
+
+## Known limitations
+
+Email delivery and password recovery are not implemented. There is no public registration flow, organization tenancy, file attachment handling, or internal-only comment model. Audit history is application-generated and is not tamper-proof against database administrators. PostgreSQL integration tests, accessibility audits, load tests, backup/restore drills, and production monitoring remain required before a real customer launch.
+
+## Interview preparation
+
+Be ready to explain authentication versus authorization, password hashing, HttpOnly cookies, database transactions, foreign keys, customer isolation, role-based permissions, optimistic concurrency, and the trade-offs between SQLite and PostgreSQL.

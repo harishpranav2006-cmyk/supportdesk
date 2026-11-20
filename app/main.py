@@ -1,4 +1,4 @@
-"""AssistFlow authenticated support workspace."""
+"""SupportDesk authenticated support workspace."""
 import hashlib
 import hmac
 import os
@@ -15,11 +15,11 @@ from sqlalchemy import select, insert, update, delete, func, or_, case
 from .database import (engine_for, metadata, users, sessions, tickets as ticket_table,
                        comments, audit_events, login_attempts)
 
-DB_PATH=os.environ.get('ASSISTFLOW_DB',os.environ.get('SUPPORTDESK_DB','supportdesk.db'))
+DB_PATH=os.environ.get('SUPPORTDESK_DB',os.environ.get('ASSISTFLOW_DB','supportdesk.db'))
 DATABASE_URL=os.environ.get('DATABASE_URL')
 SECURE_COOKIE=os.environ.get('COOKIE_SECURE','false').lower()=='true'
 STATIC=Path(__file__).parent/'static'
-app=FastAPI(title='AssistFlow',version='0.2.0')
+app=FastAPI(title='SupportDesk',version='0.2.0')
 SLA_HOURS={'high':24,'medium':72,'low':120}
 
 def engine():
@@ -206,7 +206,7 @@ def export_excel(q:str=Query('',max_length=100),status:Literal['open','in_progre
     for cell in sheet[1]: cell.font=Font(bold=True,color='FFFFFF');cell.fill=PatternFill('solid',fgColor='16324F')
     for col,width in [('A',12),('B',45),('C',65),('D',18),('E',14),('F',16),('G',24),('H',24),('I',24),('J',24),('K',24)]: sheet.column_dimensions[col].width=width
     output=BytesIO();book.save(output)
-    return Response(output.getvalue(),media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="assistflow-tickets.xlsx"'})
+    return Response(output.getvalue(),media_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',headers={'Content-Disposition':'attachment; filename="supportdesk-tickets.xlsx"'})
 
 @app.post('/api/tickets',status_code=201)
 def create_ticket(data:NewTicket,user=Depends(current_user)):
@@ -261,7 +261,7 @@ def comment(ticket_id:int,data:Comment,user=Depends(current_user)):
 @app.get('/health')
 def health():
     with db() as c: c.execute(select(users.c.id).limit(1))
-    return {'status':'ok','application':'AssistFlow','database':engine().dialect.name}
+    return {'status':'ok','application':'SupportDesk','database':engine().dialect.name}
 @app.get('/')
 def index(): return FileResponse(STATIC/'index.html')
 app.mount('/static',StaticFiles(directory=STATIC),name='static')
