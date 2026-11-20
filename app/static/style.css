@@ -10,3 +10,19 @@
 #register label{margin:15px 0}
 #register .primary{margin-top:4px}
 @media(max-height:760px){.login-content{padding:24px 0}.login-content .pill{margin-bottom:14px}.login-content label{margin:13px 0}.login-note{margin-top:16px;padding-top:14px}}
+
+.heading-actions{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.employee-toolbar{display:flex;justify-content:space-between;align-items:center;gap:18px;padding:15px 20px;border-top:1px solid var(--line);border-bottom:1px solid var(--line);background:var(--soft)}
+.employee-toolbar strong{display:block;font-size:12px;color:var(--ink)}
+.employee-toolbar small{display:block;font-size:10px;color:var(--muted);margin-top:4px}
+.manager-transfer{display:flex;align-items:center;gap:8px;min-width:min(100%,360px)}
+.manager-transfer select{margin:0;min-width:210px;flex:1}
+.manager-transfer button{white-space:nowrap}
+.employee-status{font-size:10px;font-weight:700}
+.employee-status.active{color:#26815c}
+.employee-status.inactive{color:#ae6848}
+#employee-form .form-grid{margin-top:0}
+#employee-dialog{width:min(620px,calc(100vw - 32px))}
+#employee-form .muted{font-size:11px;line-height:1.65}
+#employee-form .error{min-height:16px}
+@media(max-width:760px){.heading-actions{width:100%;justify-content:flex-start}.employee-toolbar{align-items:stretch;flex-direction:column}.manager-transfer{min-width:0}.manager-transfer select{min-width:0}.employee-toolbar small{max-width:280px}}
