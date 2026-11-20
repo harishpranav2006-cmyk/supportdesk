@@ -1,16 +1,18 @@
-"""Explicit local-demo bootstrap. Never runs automatically on deployment."""
+"""Explicit local account setup. No built-in credentials."""
 import os
-from .main import db, hash_password, init_db
+from sqlalchemy import select, insert
+from .main import db,hash_password,init_db
+from .database import users
 
 def main():
-    password=os.environ.get('DEMO_PASSWORD')
+    password=os.environ.get('ASSISTFLOW_INITIAL_PASSWORD')
     if not password or len(password)<12:
-        raise SystemExit('Set DEMO_PASSWORD to a password of at least 12 characters first.')
+        raise SystemExit('Set ASSISTFLOW_INITIAL_PASSWORD to a password of at least 12 characters.')
     init_db()
     with db() as c:
-        for email,name,role in [('customer@demo.local','Harish','customer'),('other@demo.local','Second customer','customer'),('agent@demo.local','Priya','agent'),('admin@demo.local','Administrator','admin')]:
-            c.execute('INSERT OR IGNORE INTO users(email,name,password,role) VALUES (?,?,?,?)',(email,name,hash_password(password),role))
-    print('Demo accounts ready: customer@demo.local, other@demo.local, agent@demo.local, admin@demo.local')
-    print('Existing accounts retain their passwords. This database is for local demonstration only.')
-
+        for email,name,role in [('customer','Harish','customer'),('customer2','Second customer','customer'),('agent','Priya','agent'),('admin','Administrator','admin')]:
+            address=email+'@assistflow.local'
+            if not c.execute(select(users.c.id).where(users.c.email==address)).first():
+                c.execute(insert(users).values(email=address,name=name,password=hash_password(password),role=role))
+    print('AssistFlow local accounts ready. Existing passwords retained; use Account settings to change yours.')
 if __name__=='__main__': main()

@@ -1,106 +1,50 @@
-# SupportDesk
+# AssistFlow
 
-A customer-support ticket application built as a software engineering placement portfolio project.
+A support workspace built with FastAPI, SQLAlchemy and vanilla JavaScript. Customers submit and track requests; administrators assign agents; assigned agents manage progress and replies.
 
-**Status: milestone 1, local working prototype. Not a production deployment.**
+## Features
 
-Python/FastAPI serves a same-origin HTML/CSS/JavaScript interface and a SQLite database. No paid API, AI model, Node installation, or cloud account is needed. PostgreSQL is planned; this release does not support it yet.
+- Customer isolation, agent assignment permissions and administrator controls enforced by the API.
+- Dashboard metrics, searchable/filterable ticket list, board view, activity history and dark mode.
+- Priority-based resolution targets, overdue filters and optimistic concurrency checks.
+- Excel export for agents and administrators, respecting current filters (up to 5,000 tickets). User text is stored as literal spreadsheet text to prevent formula execution.
+- Scrypt password hashes, expiring HttpOnly sessions, password changes that revoke sessions, and basic login throttling.
+- SQLite for local development; PostgreSQL support for persistent hosting.
 
-## Run on Windows (PowerShell)
+## Run locally
 
-Install Python 3.12, extract this folder, and open it in VS Code or Antigravity. Open its terminal:
+Python 3.12 or newer:
 
-```powershell
-py -3.12 -m venv .venv
-.\.venv\Scripts\python.exe -m pip install -r requirements.txt
-$env:DEMO_PASSWORD = Read-Host 'Choose a local demo password (12+ characters)'
-.\.venv\Scripts\python.exe -m app.seed
-.\.venv\Scripts\python.exe -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+```sh
+python -m venv .venv
+# Activate .venv using your operating system's activation script.
+python -m pip install -r requirements.txt
+# Set ASSISTFLOW_INITIAL_PASSWORD privately to a strong password (12+ characters).
+python -m app.seed
+python -m uvicorn app.main:app --reload
 ```
 
-Open http://127.0.0.1:8000. API documentation: http://127.0.0.1:8000/docs.
+Open http://127.0.0.1:8000. Login identifiers are `customer@assistflow.local`, `customer2@assistflow.local`, `agent@assistflow.local`, and `admin@assistflow.local`. These are identifiers, not working email inboxes. Local setup uses the supplied initial password; change each account's password in Account settings. No passwords are included in this repository.
 
-No environment activation or PowerShell execution-policy change is required. The password prompt is visible input; use a disposable demo password, not a personal password.
+Existing SupportDesk installations: back up `supportdesk.db`, install requirements and run `python -m app.migrate`. This preserves accounts, passwords, IDs, tickets and history, migrates the four original login identifiers, and adds the new schema fields. Historical tickets receive no retroactive deadline.
 
-## Run on macOS/Linux
+## Database and deployment
 
-```bash
-python3 -m venv .venv
-.venv/bin/python -m pip install -r requirements.txt
-read -rs -p 'Local demo password (12+ characters): ' DEMO_PASSWORD
-export DEMO_PASSWORD
-.venv/bin/python -m app.seed
-.venv/bin/python -m uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
+Local data is in `supportdesk.db` (override with `ASSISTFLOW_DB`). Inspect it with a SQLite browser. Hosting requires a managed PostgreSQL database: configure `DATABASE_URL` with the provider's connection string and `COOKIE_SECURE=true` in Vercel. Never commit either secrets or database files. Vercel filesystem storage is not used for persistent data.
+
+Before the first deployment, run `python -m app.migrate` against the configured database and provision accounts using `python -m app.seed` with a private initial password; immediately change passwords individually. The local seeding command does not replace existing passwords. Use your PostgreSQL provider's authenticated SQL console to inspect tables (`users`, `tickets`, `comments`, `audit`, `sessions`). Do not share connection strings or password hashes.
+
+The Vercel project uses `app/main.py` as its FastAPI entrypoint. Static assets are copied to `public/static` by `scripts/build.py`. PostgreSQL must be configured and migrated before the app is usable. Deployment completion and production credentials are not implied by this source repository.
+
+## Verification
+
+```sh
+python -m unittest discover -s tests -v
+node --check app/static/app.js
 ```
 
-## Local demo accounts
+11 API tests cover authentication, role permissions, isolation, assignment and status transitions, activity, logout, validation, pagination, throttling, exports, concurrency and password changes. Tests currently run on SQLite; PostgreSQL integration and live deployment verification are still required.
 
-All accounts use the password you chose during the first seed run. No passwords are checked into the code. Re-running seed does not reset existing passwords.
+## Scope
 
-| Account | Role |
-| --- | --- |
-| customer@demo.local | Customer |
-| other@demo.local | Second customer, for access isolation checks |
-| agent@demo.local | Support agent |
-| admin@demo.local | Administrator |
-
-Seed is explicitly for local demo use. Do not expose these shared-password accounts to the public internet.
-
-## Included workflows
-
-- Sign in/out with server-side sessions, hashed passwords, HttpOnly cookies, and eight-hour expiry.
-- Create tickets with title, description, and priority.
-- Search and filter tickets, with server-side pagination.
-- Customers see and comment only on their own tickets.
-- Agents can inspect the team inbox; only the assigned agent can comment/change status.
-- Administrators assign/unassign agents and manage ticket status.
-- Validated lifecycle: open → in_progress → resolved; resolved can reopen.
-- Ticket changes and comments produce audit records in the same transaction.
-- Five failed login attempts lock that email for 15 minutes.
-- The browser renders user text with textContent, not HTML injection.
-
-## Demo in five minutes
-
-1. Sign in as customer, create a ticket, and add a comment.
-2. Sign out; sign in as the second customer. Confirm the first ticket is absent.
-3. Sign in as administrator and assign the ticket to the support agent.
-4. Sign in as agent, move it to in progress, reply, and resolve it.
-5. Return as customer and inspect the conversation and activity trail.
-6. Explain why permission checks happen on the server even when buttons are hidden.
-
-## Tests
-
-```powershell
-.\.venv\Scripts\python.exe -m unittest discover -s tests -v
-```
-
-Linux/macOS: `.venv/bin/python -m unittest discover -s tests -v`.
-
-Eight integration tests passed in the development environment (Python 3.12). They exercise unauthorized access, customer isolation, assignment restrictions, lifecycle rules, comments, logout invalidation, validation, search/pagination, login throttling, expiry, and request security headers. Tests use a fresh temporary database per test. JavaScript syntax was checked with `node --check app/static/app.js`. Visual browser interactions and a clean Windows installation have not been verified here.
-
-GitHub Actions configuration is included but has not run on GitHub yet. Direct dependencies are pinned to the tested environment; a full transitive lockfile and dependency security review remain future work.
-
-## Structure
-
-- `app/main.py`: database schema, security, validated request models, API routes.
-- `app/seed.py`: explicitly creates local demo users.
-- `app/static/`: responsive inbox interface.
-- `tests/test_api.py`: integration/security-behavior tests.
-- `docs/ENGINEERING.md`: design, trade-offs, limitations, and learning exercises.
-- `.github/workflows/tests.yml`: continuous integration configuration.
-
-## Configuration
-
-- `SUPPORTDESK_DB`: SQLite file path; defaults to `supportdesk.db` in the current directory.
-- `COOKIE_SECURE`: set to `true` when serving behind HTTPS. Local HTTP needs the default `false`.
-- `DEMO_PASSWORD`: required only by the local seed command.
-
-## Next milestones
-
-1. PostgreSQL + SQLAlchemy, versioned migrations, database integration tests, and atomic concurrent updates.
-2. SLA response deadlines, overdue filtering, and operational metrics.
-3. Secure invitation-based user provisioning, password reset, distributed abuse protection, and deployment configuration.
-4. Browser workflow tests, accessibility checks, load measurements, and a hosted demo.
-5. QueueLab integration for asynchronous notifications; no simulated delivery claims.
-
-This project was started with AI assistance. Before presenting it in interviews, run it, understand the code, make and test your own changes, and accurately describe your contribution. Do not claim production users or performance figures without measurements.
+This is an interview portfolio application, not a claim of production certification. Email delivery/reset, attachments, organization tenancy, automated backup/restore drills, distributed rate limiting, accessibility auditing and load testing remain future work. Capacity depends on the database plan and measured workload, not merely database choice.
