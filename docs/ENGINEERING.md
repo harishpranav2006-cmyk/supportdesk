@@ -21,7 +21,7 @@ SQLite is the local development default. PostgreSQL is supported through \`DATAB
 
 ## Known limitations
 
-Email delivery and password recovery are not implemented. There is no public registration flow, organization tenancy, file attachment handling, or internal-only comment model. Audit history is application-generated and is not tamper-proof against database administrators. PostgreSQL integration tests, accessibility audits, load tests, backup/restore drills, and production monitoring remain required before a real customer launch.
+Email delivery and password recovery are not implemented. Public registration creates customer-role accounts only and currently does not verify email ownership. Organization tenancy, file attachment handling, and internal-only comments are not implemented. Audit history is application-generated and is not tamper-proof against database administrators. PostgreSQL integration tests, accessibility audits, load tests, backup/restore drills, and production monitoring remain required before a real customer launch.
 
 ## Interview preparation
 
