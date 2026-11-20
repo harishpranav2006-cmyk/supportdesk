@@ -3,7 +3,7 @@ import unittest
 from pathlib import Path
 
 from sqlalchemy import create_engine, insert, select
-from app.database import metadata, users, versions
+from app.database import metadata, users, versions, signup_attempts
 from app.migrate import migrate
 
 
@@ -78,6 +78,24 @@ class SupportDeskMigrationTests(unittest.TestCase):
             self.assertEqual(
                 emails,
                 {"customer@assistflow.local", "customer@supportdesk.local"},
+            )
+
+
+    def test_signup_rate_limit_table_is_migrated_and_versioned(self):
+        migrate(self.engine)
+        with self.engine.connect() as connection:
+            tables = set(__import__("sqlalchemy").inspect(connection).get_table_names())
+            applied = set(connection.execute(select(versions.c.version)).scalars())
+        self.assertIn(signup_attempts.name, tables)
+        self.assertIn(4, applied)
+        # Re-running migrations is safe and does not duplicate version rows.
+        migrate(self.engine)
+        with self.engine.connect() as connection:
+            self.assertEqual(
+                connection.execute(
+                    select(versions.c.version).where(versions.c.version == 4)
+                ).all().__len__(),
+                1,
             )
 
 
