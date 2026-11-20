@@ -101,6 +101,12 @@ class UpdateEmployee(BaseModel):
 class TransferEmployeeManager(BaseModel):
     user_id:int=Field(gt=0)
 
+class NewTicket(BaseModel):
+    title:str=Field(min_length=3,max_length=160,pattern=r'\S')
+    description:str=Field(min_length=5,max_length=10000,pattern=r'\S')
+    priority:Literal['low','medium','high']='medium'
+    category:Literal['general','technical','billing','account']='general'
+
 class UpdateTicket(BaseModel):
     status:Literal['open','in_progress','resolved']
     version:int|None=Field(None,ge=1)
