@@ -13,7 +13,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 from sqlalchemy import select, insert, update, delete, func, or_, case
 from .database import (engine_for, metadata, users, sessions, tickets as ticket_table,
-                       comments, audit_events, login_attempts)
+                       comments, audit_events, login_attempts, signup_attempts)
 
 DB_PATH=os.environ.get('SUPPORTDESK_DB',os.environ.get('ASSISTFLOW_DB','supportdesk.db'))
 DATABASE_URL=os.environ.get('DATABASE_URL')
